@@ -12,9 +12,7 @@ from __future__ import absolute_import
 from math import log
 from six.moves.urllib.parse import urljoin
 
-from jinja2 import contextfunction
-
-from werkzeug.contrib.atom import AtomFeed
+from jinja2 import pass_context
 
 from rstblog.signals import after_file_published, \
      before_build_finished
@@ -29,7 +27,7 @@ class Tag(object):
         self.size = 100 + log(count or 1) * 20
 
 
-@contextfunction
+@pass_context
 def get_tags(context, limit=50):
     tags = get_tag_summary(context['builder'])
     if limit:
@@ -74,24 +72,6 @@ def write_tagcloud_page(builder):
         f.write(rv.encode('utf-8') + b'\n')
 
 
-def write_tag_feed(builder, tag):
-    blog_author = builder.config.root_get('author')
-    url = builder.config.root_get('canonical_url') or 'http://localhost/'
-    name = builder.config.get('feed.name') or u'Recent Blog Posts'
-    subtitle = builder.config.get('feed.subtitle') or u'Recent blog posts'
-    feed = AtomFeed(name,
-                    subtitle=subtitle,
-                    feed_url=urljoin(url, builder.link_to('blog_feed')),
-                    url=url)
-    for entry in get_tagged_entries(builder, tag)[:10]:
-        feed.add(entry.title, six.text_type(entry.render_contents()),
-                 content_type='html', author=blog_author,
-                 url=urljoin(url, entry.slug),
-                 updated=entry.pub_date)
-    with builder.open_link_file('tagfeed', tag=tag.name) as f:
-        f.write(feed.to_string().encode('utf-8') + b'\n')
-
-
 def write_tag_page(builder, tag):
     entries = get_tagged_entries(builder, tag)
     entries.sort(key=lambda x: (x.title or '').lower())
@@ -107,7 +87,6 @@ def write_tag_files(builder):
     write_tagcloud_page(builder)
     for tag in get_tag_summary(builder):
         write_tag_page(builder, tag)
-        write_tag_feed(builder, tag)
 
 
 def setup(builder):

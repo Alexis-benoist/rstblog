@@ -14,11 +14,10 @@ from __future__ import absolute_import
 from datetime import datetime, date
 from six.moves.urllib.parse import urljoin
 
-from jinja2 import contextfunction
+from jinja2 import pass_context
 
-from werkzeug.routing import Rule, Map, NotFound
-from werkzeug.contrib.atom import AtomFeed
-
+from werkzeug.routing import Rule, Map
+from werkzeug.exceptions import NotFound
 from rstblog.signals import after_file_published, \
      before_build_finished
 from rstblog.utils import Pagination
@@ -102,7 +101,7 @@ def get_archive_summary(builder):
     return [YearArchive(builder, year, months) for year, months in years]
 
 
-@contextfunction
+@pass_context
 def get_recent_blog_entries(context, limit=10):
     return get_all_entries(context['builder'])[:limit]
 
@@ -147,28 +146,9 @@ def write_archive_pages(builder):
                 f.write(rv.encode('utf-8') + b'\n')
 
 
-def write_feed(builder):
-    blog_author = builder.config.root_get('author')
-    url = builder.config.root_get('canonical_url') or 'http://localhost/'
-    name = builder.config.get('feed.name') or u'Recent Blog Posts'
-    subtitle = builder.config.get('feed.subtitle') or u'Recent blog posts'
-    feed = AtomFeed(name,
-                    subtitle=subtitle,
-                    feed_url=urljoin(url, builder.link_to('blog_feed')),
-                    url=url)
-    for entry in get_all_entries(builder)[:10]:
-        feed.add(entry.title, six.text_type(entry.render_contents()),
-                 content_type='html', author=blog_author,
-                 url=urljoin(url, entry.slug),
-                 updated=entry.pub_date)
-    with builder.open_link_file('blog_feed') as f:
-        f.write(feed.to_string().encode('utf-8') + b'\n')
-
-
 def write_blog_files(builder):
     write_index_page(builder)
     write_archive_pages(builder)
-    write_feed(builder)
 
 
 def setup(builder):
